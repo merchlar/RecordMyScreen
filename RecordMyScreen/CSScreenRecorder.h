@@ -27,6 +27,7 @@
 
 - (void)startRecordingScreen;
 - (void)stopRecordingScreen;
+- (void)cancelRecordingScreen;
 
 @end
 

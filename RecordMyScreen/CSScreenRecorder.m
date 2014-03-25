@@ -22,6 +22,7 @@ void CARenderServerRenderDisplay(kern_return_t a, CFStringRef b, IOSurfaceRef su
 @interface CSScreenRecorder ()
 {
 @private
+    BOOL                _isCanceling;
     BOOL                _isRecording;
     int                 _kbps;
     int                 _fps;
@@ -125,7 +126,18 @@ void CARenderServerRenderDisplay(kern_return_t a, CFStringRef b, IOSurfaceRef su
 {
 	// Set the flag to stop recording
     _isRecording = NO;
-    
+    _isCanceling = NO;
+
+    // Invalidate the recording time
+    [_recordingTimer invalidate];
+    _recordingTimer = nil;
+}
+
+- (void)cancelRecordingScreen {
+    // Set the flag to stop recording
+    _isRecording = NO;
+    _isCanceling = YES;
+
     // Invalidate the recording time
     [_recordingTimer invalidate];
     _recordingTimer = nil;
@@ -190,6 +202,7 @@ void CARenderServerRenderDisplay(kern_return_t a, CFStringRef b, IOSurfaceRef su
                                                       repeats:YES];
     
     _isRecording = YES;
+    _isCanceling = NO;
     
     //capture loop (In another thread)
     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
@@ -238,7 +251,12 @@ void CARenderServerRenderDisplay(kern_return_t a, CFStringRef b, IOSurfaceRef su
         
         // finish encoding, using the video_queue thread
         dispatch_async(_videoQueue, ^{
-            [self _finishEncoding];
+            if (!_isCanceling) {
+                [self _finishEncoding];
+            }
+            else {
+                [self _cancelEncoding];
+            }
         });
         
     });
@@ -481,6 +499,35 @@ void CARenderServerRenderDisplay(kern_return_t a, CFStringRef b, IOSurfaceRef su
     _recordStartDate = nil;
 	
 	[self addAudioTrackToRecording];
+}
+
+- (void)_cancelEncoding
+{
+	// Tell the AVAssetWriterInput were done appending buffers
+    [_videoWriterInput markAsFinished];
+    
+    // Tell the AVAssetWriter to finish and close the file
+    [_videoWriter finishWriting];
+    
+    // Make objects go away
+    [_videoWriter release];
+    [_videoWriterInput release];
+    [_pixelBufferAdaptor release];
+    _videoWriter = nil;
+    _videoWriterInput = nil;
+    _pixelBufferAdaptor = nil;
+	
+	// Stop the audio recording
+    [_audioRecorder stop];
+    [_audioRecorder release];
+    _audioRecorder = nil;
+    
+    [_recordStartDate release];
+    _recordStartDate = nil;
+	
+    [[NSFileManager defaultManager] removeItemAtPath:self.videoOutPath error:nil];
+    
+    _isCanceling = NO;
 }
 
 - (void)addAudioTrackToRecording {
