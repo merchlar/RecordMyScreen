@@ -13,6 +13,8 @@
 #import <QuartzCore/QuartzCore.h>
 
 #include <IOSurface.h>
+#include <IOSurfaceAPI.h>
+#include <IOSurfaceBase.h>
 #include <sys/time.h>
 
 void CARenderServerRenderDisplay(kern_return_t a, CFStringRef b, IOSurfaceRef surface, int x, int y);
@@ -185,7 +187,7 @@ void CARenderServerRenderDisplay(kern_return_t a, CFStringRef b, IOSurfaceRef su
                                                       repeats:YES];
     
     _isRecording = YES;
-
+    
     //capture loop (In another thread)
     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
         int targetFPS = _fps;
@@ -479,14 +481,16 @@ void CARenderServerRenderDisplay(kern_return_t a, CFStringRef b, IOSurfaceRef su
 }
 
 - (void)addAudioTrackToRecording {
-	double degrees = 0.0;
+	double degrees = 90;
 	NSUserDefaults *prefs = [NSUserDefaults standardUserDefaults];
-	if ([prefs objectForKey:@"vidorientation"])
-		degrees = [[prefs objectForKey:@"vidorientation"] doubleValue];
+    //	if ([prefs objectForKey:@"vidorientation"])
+    //		degrees = [[prefs objectForKey:@"vidorientation"] doubleValue];
 	
 	NSString *videoPath = self.videoOutPath;
 	NSString *audioPath = self.audioOutPath;
 	
+    NSLog(@"audioPath %@", self.audioOutPath);
+    
 	NSURL *videoURL = [NSURL fileURLWithPath:videoPath];
 	NSURL *audioURL = [NSURL fileURLWithPath:audioPath];
 	
@@ -502,34 +506,64 @@ void CARenderServerRenderDisplay(kern_return_t a, CFStringRef b, IOSurfaceRef su
 			assetVideoTrack = assetArray[0];
 	}
 	
-	if ([[NSFileManager defaultManager] fileExistsAtPath:audioPath] && [prefs boolForKey:@"recordaudio"]) {
-		NSArray *assetArray = [audioAsset tracksWithMediaType:AVMediaTypeAudio];
-		if ([assetArray count] > 0)
-			assetAudioTrack = assetArray[0];
-	}
+    //	if ([[NSFileManager defaultManager] fileExistsAtPath:audioPath] && [prefs boolForKey:@"recordaudio"]) {
+    NSArray *assetArray = [audioAsset tracksWithMediaType:AVMediaTypeAudio];
+    if ([assetArray count] > 0)
+        assetAudioTrack = assetArray[0];
+    //	}
 	
 	AVMutableComposition *mixComposition = [AVMutableComposition composition];
 	
-	if (assetVideoTrack != nil) {
+    //	if (assetVideoTrack != nil) {
+    //		AVMutableCompositionTrack *compositionVideoTrack = [mixComposition addMutableTrackWithMediaType:AVMediaTypeVideo preferredTrackID:kCMPersistentTrackID_Invalid];
+    //		[compositionVideoTrack insertTimeRange:CMTimeRangeMake(kCMTimeZero, videoAsset.duration) ofTrack:assetVideoTrack atTime:kCMTimeZero error:nil];
+    //		if (assetAudioTrack != nil) [compositionVideoTrack scaleTimeRange:CMTimeRangeMake(kCMTimeZero, videoAsset.duration) toDuration:audioAsset.duration];
+    //		[compositionVideoTrack setPreferredTransform:CGAffineTransformMakeRotation(degreesToRadians(degrees))];
+    //	}
+    //
+    //	if (assetAudioTrack != nil) {
+    //		AVMutableCompositionTrack *compositionAudioTrack = [mixComposition addMutableTrackWithMediaType:AVMediaTypeAudio preferredTrackID:kCMPersistentTrackID_Invalid];
+    //		[compositionAudioTrack insertTimeRange:CMTimeRangeMake(kCMTimeZero, audioAsset.duration) ofTrack:assetAudioTrack atTime:kCMTimeZero error:nil];
+    //	}
+    
+    AVMutableCompositionTrack *compositionAudioTrack;
+    
+    if (assetVideoTrack != nil) {
 		AVMutableCompositionTrack *compositionVideoTrack = [mixComposition addMutableTrackWithMediaType:AVMediaTypeVideo preferredTrackID:kCMPersistentTrackID_Invalid];
 		[compositionVideoTrack insertTimeRange:CMTimeRangeMake(kCMTimeZero, videoAsset.duration) ofTrack:assetVideoTrack atTime:kCMTimeZero error:nil];
-		if (assetAudioTrack != nil) [compositionVideoTrack scaleTimeRange:CMTimeRangeMake(kCMTimeZero, videoAsset.duration) toDuration:audioAsset.duration];
+        //		if (assetAudioTrack != nil) [compositionVideoTrack scaleTimeRange:CMTimeRangeMake(kCMTimeZero, videoAsset.duration) toDuration:audioAsset.duration];
 		[compositionVideoTrack setPreferredTransform:CGAffineTransformMakeRotation(degreesToRadians(degrees))];
 	}
 	
 	if (assetAudioTrack != nil) {
-		AVMutableCompositionTrack *compositionAudioTrack = [mixComposition addMutableTrackWithMediaType:AVMediaTypeAudio preferredTrackID:kCMPersistentTrackID_Invalid];
-		[compositionAudioTrack insertTimeRange:CMTimeRangeMake(kCMTimeZero, audioAsset.duration) ofTrack:assetAudioTrack atTime:kCMTimeZero error:nil];
+		compositionAudioTrack = [mixComposition addMutableTrackWithMediaType:AVMediaTypeAudio preferredTrackID:kCMPersistentTrackID_Invalid];
+		[compositionAudioTrack insertTimeRange:CMTimeRangeMake(kCMTimeZero, videoAsset.duration) ofTrack:assetAudioTrack atTime:kCMTimeZero error:nil];
 	}
-
+    
+    float duration = CMTimeGetSeconds(videoAsset.duration);
+    
+    AVMutableAudioMix *exportAudioMix = [AVMutableAudioMix audioMix];
+    
+    AVMutableAudioMixInputParameters *exportAudioMixInputParameters = [AVMutableAudioMixInputParameters audioMixInputParametersWithTrack:compositionAudioTrack];
+    [exportAudioMixInputParameters setVolumeRampFromStartVolume:1 toEndVolume:0 timeRange:CMTimeRangeMake(CMTimeMakeWithSeconds(duration - 3, 1), CMTimeSubtract(CMTimeMakeWithSeconds(duration, 1), CMTimeMakeWithSeconds(duration - 3, 1)))];
+    
+    [exportAudioMixInputParameters setVolumeRampFromStartVolume:0 toEndVolume:1 timeRange:CMTimeRangeMake(CMTimeMakeWithSeconds(0, 1), CMTimeSubtract(CMTimeMakeWithSeconds(3, 1), CMTimeMakeWithSeconds(0, 1)))];
+    
+    
+    NSArray *audioMixParameters = @[exportAudioMixInputParameters];
+    exportAudioMix.inputParameters = audioMixParameters;
+    
+    
+    
 	NSString *exportPath = [videoPath substringWithRange:NSMakeRange(0, videoPath.length - 4)];
 	exportPath = [NSString stringWithFormat:@"%@.mov", exportPath];
 	NSURL *exportURL = [NSURL fileURLWithPath:exportPath];
 	
-	AVAssetExportSession *exportSession = [[AVAssetExportSession alloc] initWithAsset:mixComposition presetName:AVAssetExportPresetPassthrough];
-	[exportSession setOutputFileType:AVFileTypeQuickTimeMovie];
+	AVAssetExportSession *exportSession = [[AVAssetExportSession alloc] initWithAsset:mixComposition presetName:AVAssetExportPresetHighestQuality];
+	[exportSession setOutputFileType:AVFileTypeMPEG4];
 	[exportSession setOutputURL:exportURL];
 	[exportSession setShouldOptimizeForNetworkUse:NO];
+    [exportSession setAudioMix:exportAudioMix];
 	
 	[exportSession exportAsynchronouslyWithCompletionHandler:^(void){
 		switch (exportSession.status) {
