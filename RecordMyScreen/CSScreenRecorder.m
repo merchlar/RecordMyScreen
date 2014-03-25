@@ -44,6 +44,9 @@ void CARenderServerRenderDisplay(kern_return_t a, CFStringRef b, IOSurfaceRef su
     AVAssetWriterInputPixelBufferAdaptor *_pixelBufferAdaptor;
 }
 
+@property(nonatomic, copy) NSString *exportPath;
+
+
 - (void)_setupVideoContext;
 - (void)_setupAudio;
 - (void)_setupVideoAndStartRecording;
@@ -555,9 +558,9 @@ void CARenderServerRenderDisplay(kern_return_t a, CFStringRef b, IOSurfaceRef su
     
     
     
-	NSString *exportPath = [videoPath substringWithRange:NSMakeRange(0, videoPath.length - 4)];
-	exportPath = [NSString stringWithFormat:@"%@.mov", exportPath];
-	NSURL *exportURL = [NSURL fileURLWithPath:exportPath];
+	self.exportPath = [videoPath substringWithRange:NSMakeRange(0, videoPath.length - 4)];
+	self.exportPath = [NSString stringWithFormat:@"%@.mov", self.exportPath];
+	NSURL *exportURL = [NSURL fileURLWithPath:self.exportPath];
 	
 	AVAssetExportSession *exportSession = [[AVAssetExportSession alloc] initWithAsset:mixComposition presetName:AVAssetExportPresetHighestQuality];
 	[exportSession setOutputFileType:AVFileTypeMPEG4];
