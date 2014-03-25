@@ -24,6 +24,8 @@ void CARenderServerRenderDisplay(kern_return_t a, CFStringRef b, IOSurfaceRef su
 @private
     BOOL                _isCanceling;
     BOOL                _isRecording;
+    BOOL                _isSetup;
+
     int                 _kbps;
     int                 _fps;
     
@@ -78,8 +80,10 @@ void CARenderServerRenderDisplay(kern_return_t a, CFStringRef b, IOSurfaceRef su
 
 - (void)dealloc
 {
-    CFRelease(_surface);
-    _surface = NULL;
+    if (_isSetup == YES) {
+        CFRelease(_surface);
+        _surface = NULL;
+    }
     
     dispatch_release(_videoQueue);
     _videoQueue = NULL;
@@ -141,10 +145,14 @@ void CARenderServerRenderDisplay(kern_return_t a, CFStringRef b, IOSurfaceRef su
     // Invalidate the recording time
     [_recordingTimer invalidate];
     _recordingTimer = nil;
+
 }
 
 - (void)_setupAudio
 {
+    
+    _isSetup = YES;
+    
     // Setup to be able to record global sounds (preexisting app sounds)
 	NSError *sessionError = nil;
     if ([[AVAudioSession sharedInstance] respondsToSelector:@selector(setCategory:withOptions:error:)])
@@ -194,6 +202,9 @@ void CARenderServerRenderDisplay(kern_return_t a, CFStringRef b, IOSurfaceRef su
 
 - (void)_setupVideoAndStartRecording
 {
+    
+    _isSetup = YES;
+    
     // Set timer to notify the delegate of time changes every second
     _recordingTimer = [NSTimer scheduledTimerWithTimeInterval:1
                                                        target:self
@@ -643,6 +654,8 @@ void CARenderServerRenderDisplay(kern_return_t a, CFStringRef b, IOSurfaceRef su
 				break;
 		}
 		
+        _isSetup = NO;
+        
 		if ([self.delegate respondsToSelector:@selector(screenRecorderDidStopRecording:)]) {
 			[self.delegate screenRecorderDidStopRecording:self];
 		}
