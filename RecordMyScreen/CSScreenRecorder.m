@@ -551,7 +551,8 @@ void CARenderServerRenderDisplay(kern_return_t a, CFStringRef b, IOSurfaceRef su
 	NSString *audioPath = self.audioOutPath;
 	
     NSLog(@"audioPath %@", self.audioOutPath);
-    
+    NSLog(@"videoPath %@", self.videoOutPath);
+
 	NSURL *videoURL = [NSURL fileURLWithPath:videoPath];
 	NSURL *audioURL = [NSURL fileURLWithPath:audioPath];
 	
@@ -587,10 +588,11 @@ void CARenderServerRenderDisplay(kern_return_t a, CFStringRef b, IOSurfaceRef su
     //		[compositionAudioTrack insertTimeRange:CMTimeRangeMake(kCMTimeZero, audioAsset.duration) ofTrack:assetAudioTrack atTime:kCMTimeZero error:nil];
     //	}
     
-    AVMutableCompositionTrack *compositionAudioTrack;
-    
+    AVMutableCompositionTrack *compositionAudioTrack = nil;
+    AVMutableCompositionTrack *compositionVideoTrack = nil;
+
     if (assetVideoTrack != nil) {
-		AVMutableCompositionTrack *compositionVideoTrack = [mixComposition addMutableTrackWithMediaType:AVMediaTypeVideo preferredTrackID:kCMPersistentTrackID_Invalid];
+		compositionVideoTrack = [mixComposition addMutableTrackWithMediaType:AVMediaTypeVideo preferredTrackID:kCMPersistentTrackID_Invalid];
 		[compositionVideoTrack insertTimeRange:CMTimeRangeMake(kCMTimeZero, videoAsset.duration) ofTrack:assetVideoTrack atTime:kCMTimeZero error:nil];
         //		if (assetAudioTrack != nil) [compositionVideoTrack scaleTimeRange:CMTimeRangeMake(kCMTimeZero, videoAsset.duration) toDuration:audioAsset.duration];
 		[compositionVideoTrack setPreferredTransform:CGAffineTransformMakeRotation(degreesToRadians(degrees))];
@@ -601,19 +603,52 @@ void CARenderServerRenderDisplay(kern_return_t a, CFStringRef b, IOSurfaceRef su
 		[compositionAudioTrack insertTimeRange:CMTimeRangeMake(kCMTimeZero, videoAsset.duration) ofTrack:assetAudioTrack atTime:kCMTimeZero error:nil];
 	}
     
+    
+    
+    
     float duration = CMTimeGetSeconds(videoAsset.duration);
-    
     AVMutableAudioMix *exportAudioMix = [AVMutableAudioMix audioMix];
-    
     AVMutableAudioMixInputParameters *exportAudioMixInputParameters = [AVMutableAudioMixInputParameters audioMixInputParametersWithTrack:compositionAudioTrack];
     [exportAudioMixInputParameters setVolumeRampFromStartVolume:1 toEndVolume:0 timeRange:CMTimeRangeMake(CMTimeMakeWithSeconds(duration - 3, 1), CMTimeSubtract(CMTimeMakeWithSeconds(duration, 1), CMTimeMakeWithSeconds(duration - 3, 1)))];
-    
     [exportAudioMixInputParameters setVolumeRampFromStartVolume:0 toEndVolume:1 timeRange:CMTimeRangeMake(CMTimeMakeWithSeconds(0, 1), CMTimeSubtract(CMTimeMakeWithSeconds(3, 1), CMTimeMakeWithSeconds(0, 1)))];
     
     
     NSArray *audioMixParameters = @[exportAudioMixInputParameters];
     exportAudioMix.inputParameters = audioMixParameters;
     
+    AVMutableVideoComposition* videoComposition = nil;
+    //CROP THE VIDEO FOR IPHONE 4
+    if (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPhone && [UIScreen mainScreen].bounds.size.height == 480.0) {
+        
+        AVMutableVideoCompositionLayerInstruction* transformer = [AVMutableVideoCompositionLayerInstruction videoCompositionLayerInstructionWithAssetTrack:compositionVideoTrack];
+        
+        CGAffineTransform Concat2 = CGAffineTransformConcat(compositionVideoTrack.preferredTransform, CGAffineTransformMakeTranslation(960, -50));
+        [transformer setTransform:Concat2 atTime:kCMTimeZero];
+        
+        AVMutableVideoCompositionInstruction *instruction = [AVMutableVideoCompositionInstruction videoCompositionInstruction];
+        instruction.timeRange = CMTimeRangeMake(kCMTimeZero, videoAsset.duration);
+        instruction.layerInstructions = [NSArray arrayWithObject:transformer];
+        
+        videoComposition = [AVMutableVideoComposition videoComposition];
+        videoComposition.renderSize = CGSizeMake(960, 540);
+        videoComposition.frameDuration = CMTimeMake(1, 30);
+        videoComposition.instructions = [NSArray arrayWithObject: instruction];
+    }
+    else if (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad) {
+//        AVMutableVideoCompositionLayerInstruction* transformer = [AVMutableVideoCompositionLayerInstruction videoCompositionLayerInstructionWithAssetTrack:compositionVideoTrack];
+//        
+//        CGAffineTransform Concat2 = CGAffineTransformConcat(compositionVideoTrack.preferredTransform, CGAffineTransformMakeTranslation(960, -50));
+//        [transformer setTransform:Concat2 atTime:kCMTimeZero];
+//        
+//        AVMutableVideoCompositionInstruction *instruction = [AVMutableVideoCompositionInstruction videoCompositionInstruction];
+//        instruction.timeRange = CMTimeRangeMake(kCMTimeZero, videoAsset.duration);
+//        instruction.layerInstructions = [NSArray arrayWithObject:transformer];
+//        
+//        videoComposition = [AVMutableVideoComposition videoComposition];
+//        videoComposition.renderSize = CGSizeMake(960, 540);
+//        videoComposition.frameDuration = CMTimeMake(1, 30);
+//        videoComposition.instructions = [NSArray arrayWithObject: instruction];
+    }
     
     
 	self.exportPath = [videoPath substringWithRange:NSMakeRange(0, videoPath.length - 4)];
@@ -625,6 +660,10 @@ void CARenderServerRenderDisplay(kern_return_t a, CFStringRef b, IOSurfaceRef su
 	[exportSession setOutputURL:exportURL];
 	[exportSession setShouldOptimizeForNetworkUse:NO];
     [exportSession setAudioMix:exportAudioMix];
+    
+    if (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad || (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPhone && [UIScreen mainScreen].bounds.size.height == 480.0)) {
+        [exportSession setVideoComposition:videoComposition];
+    }
 	
 	[exportSession exportAsynchronouslyWithCompletionHandler:^(void){
 		switch (exportSession.status) {
