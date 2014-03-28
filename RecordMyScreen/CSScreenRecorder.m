@@ -542,7 +542,15 @@ void CARenderServerRenderDisplay(kern_return_t a, CFStringRef b, IOSurfaceRef su
 }
 
 - (void)addAudioTrackToRecording {
-	double degrees = 90;
+	double degrees = 0;
+    
+    if (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPhone) {
+        degrees = 90;
+    }
+    else {
+        degrees = 0;
+    }
+    
 	NSUserDefaults *prefs = [NSUserDefaults standardUserDefaults];
     //	if ([prefs objectForKey:@"vidorientation"])
     //		degrees = [[prefs objectForKey:@"vidorientation"] doubleValue];
@@ -635,19 +643,20 @@ void CARenderServerRenderDisplay(kern_return_t a, CFStringRef b, IOSurfaceRef su
         videoComposition.instructions = [NSArray arrayWithObject: instruction];
     }
     else if (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad) {
-//        AVMutableVideoCompositionLayerInstruction* transformer = [AVMutableVideoCompositionLayerInstruction videoCompositionLayerInstructionWithAssetTrack:compositionVideoTrack];
-//        
-//        CGAffineTransform Concat2 = CGAffineTransformConcat(compositionVideoTrack.preferredTransform, CGAffineTransformMakeTranslation(960, -50));
-//        [transformer setTransform:Concat2 atTime:kCMTimeZero];
-//        
-//        AVMutableVideoCompositionInstruction *instruction = [AVMutableVideoCompositionInstruction videoCompositionInstruction];
-//        instruction.timeRange = CMTimeRangeMake(kCMTimeZero, videoAsset.duration);
-//        instruction.layerInstructions = [NSArray arrayWithObject:transformer];
-//        
-//        videoComposition = [AVMutableVideoComposition videoComposition];
-//        videoComposition.renderSize = CGSizeMake(960, 540);
-//        videoComposition.frameDuration = CMTimeMake(1, 30);
-//        videoComposition.instructions = [NSArray arrayWithObject: instruction];
+        AVMutableVideoCompositionLayerInstruction* transformer = [AVMutableVideoCompositionLayerInstruction videoCompositionLayerInstructionWithAssetTrack:compositionVideoTrack];
+        
+        CGAffineTransform Concat2 = CGAffineTransformConcat(compositionVideoTrack.preferredTransform, CGAffineTransformMakeTranslation(0, -96));
+        [transformer setTransform:Concat2 atTime:kCMTimeZero];
+//        [transformer setTransform:compositionVideoTrack.preferredTransform atTime:kCMTimeZero];
+
+        AVMutableVideoCompositionInstruction *instruction = [AVMutableVideoCompositionInstruction videoCompositionInstruction];
+        instruction.timeRange = CMTimeRangeMake(kCMTimeZero, videoAsset.duration);
+        instruction.layerInstructions = [NSArray arrayWithObject:transformer];
+        
+        videoComposition = [AVMutableVideoComposition videoComposition];
+        videoComposition.renderSize = CGSizeMake(1024, 576);
+        videoComposition.frameDuration = CMTimeMake(1, 30);
+        videoComposition.instructions = [NSArray arrayWithObject: instruction];
     }
     
     
