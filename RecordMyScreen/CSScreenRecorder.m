@@ -122,7 +122,6 @@ void CARenderServerRenderDisplay(kern_return_t a, CFStringRef b, IOSurfaceRef su
         [self _setupVideoContext]; // this must be done before _setupVideoAndStartRecording
     _recordStartDate = [[NSDate date] retain];
     
-    [self _setupAudio];
     [self _setupVideoAndStartRecording];
 }
 
