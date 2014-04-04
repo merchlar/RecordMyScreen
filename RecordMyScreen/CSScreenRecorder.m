@@ -433,8 +433,9 @@ void CARenderServerRenderDisplay(kern_return_t a, CFStringRef b, IOSurfaceRef su
     // Setup output settings, Codec, Width, Height, Compression
     int videowidth = _width;
     int videoheight = _height;
-    if ([[NSUserDefaults standardUserDefaults] objectForKey:@"vidsize"]) {
-        if (![[[NSUserDefaults standardUserDefaults] objectForKey:@"vidsize"] boolValue]){
+    if (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad) {
+        if ([UIScreen mainScreen].scale == 2.0) {
+            NSLog(@"IPAD RETINA");
             videowidth /= 2; //If it's set to half-size, divide both by 2.
             videoheight /= 2;
         }
