@@ -330,11 +330,7 @@ void CARenderServerRenderDisplay(kern_return_t a, CFStringRef b, IOSurfaceRef su
         }
     }
     
-    if (failed) {
-        NSLog(@"OMG IT FAILED");
-    }else{
-        NSLog(@"DID NOT FAIL!");
-    }
+
     
     
     dispatch_async(dispatch_get_main_queue(), ^{
