@@ -23,6 +23,8 @@ void CARenderServerRenderDisplay(kern_return_t a, CFStringRef b, IOSurfaceRef su
 {
 @private
     BOOL                _isCanceling;
+    BOOL                _isCancelingFromNotif;
+
     BOOL                _isRecording;
     BOOL                _isSetup;
 
@@ -140,7 +142,6 @@ void CARenderServerRenderDisplay(kern_return_t a, CFStringRef b, IOSurfaceRef su
     // Set the flag to stop recording
     _isRecording = NO;
     _isCanceling = YES;
-
     // Invalidate the recording time
     [_recordingTimer invalidate];
     _recordingTimer = nil;
@@ -213,7 +214,7 @@ void CARenderServerRenderDisplay(kern_return_t a, CFStringRef b, IOSurfaceRef su
     
     _isRecording = YES;
     _isCanceling = NO;
-    
+    _isCancelingFromNotif = NO;
     //capture loop (In another thread)
     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
         int targetFPS = _fps;
@@ -272,6 +273,8 @@ void CARenderServerRenderDisplay(kern_return_t a, CFStringRef b, IOSurfaceRef su
     });
 }
 
+#define NUM_PIXELS_TO_CHECK 20
+
 - (void)_captureShot:(CMTime)frameTime
 {
     // Create an IOSurfaceRef if one does not exist
@@ -308,7 +311,46 @@ void CARenderServerRenderDisplay(kern_return_t a, CFStringRef b, IOSurfaceRef su
         [buffers removeLastObject];
     }
     
+    
+    //Check if the snapchat is black because of notification, going background etc...
+    int numPixels = totalBytes/4;
+    
+    int increment = numPixels/NUM_PIXELS_TO_CHECK;
+    
+    BOOL failed = YES;
+    
+    for (int i=0;i<numPixels;i+=increment){
+        unsigned char* red = (unsigned char*)[rawDataObj bytes]+4*i;
+        unsigned char* green = red+1;
+        unsigned char* blue = green+1;
+        
+        if (*red>5 || *green>5 || *blue>5){
+            failed = NO;
+            break;
+        }
+    }
+    
+    if (failed) {
+        NSLog(@"OMG IT FAILED");
+    }else{
+        NSLog(@"DID NOT FAIL!");
+    }
+    
+    
     dispatch_async(dispatch_get_main_queue(), ^{
+        
+        if (failed) {
+            
+            if (!_isCancelingFromNotif) {
+                if ([self.delegate respondsToSelector:@selector(screenRecorderDidCancelFromNotifRecording:)]) {
+                    [self.delegate screenRecorderDidCancelFromNotifRecording:self];
+                }
+                _isCancelingFromNotif = YES;
+            }
+
+            
+            return;
+        }
         
         if(!_pixelBufferAdaptor.pixelBufferPool){
             NSLog(@"skipping frame: %lld", frameTime.value);
@@ -539,6 +581,7 @@ void CARenderServerRenderDisplay(kern_return_t a, CFStringRef b, IOSurfaceRef su
     [[NSFileManager defaultManager] removeItemAtPath:self.videoOutPath error:nil];
     
     _isCanceling = NO;
+    _isCancelingFromNotif = NO;
 }
 
 - (void)addAudioTrackToRecording {

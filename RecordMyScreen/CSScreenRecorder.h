@@ -33,6 +33,7 @@
 
 @protocol CSScreenRecorderDelegate <NSObject>
 @optional
+- (void)screenRecorderDidCancelFromNotifRecording:(CSScreenRecorder *)recorder;
 - (void)screenRecorderDidStartRecording:(CSScreenRecorder *)recorder;
 - (void)screenRecorderDidStopRecording:(CSScreenRecorder *)recorder;
 // Called every second.
