@@ -478,6 +478,14 @@ void CARenderServerRenderDisplay(kern_return_t a, CFStringRef b, IOSurfaceRef su
             videoheight /= 2;
         }
     }
+    else {
+        if ([[UIScreen mainScreen] bounds].size.height == 480) {
+            NSLog(@"IPHONE 4S");
+
+            videowidth /= 2; //If it's set to half-size, divide both by 2.
+            videoheight /= 2;
+        }
+    }
     NSMutableDictionary *outputSettings = [NSMutableDictionary dictionaryWithObjectsAndKeys:
                                            AVVideoCodecH264, AVVideoCodecKey,
                                            [NSNumber numberWithInt:videowidth], AVVideoWidthKey,
@@ -677,7 +685,7 @@ void CARenderServerRenderDisplay(kern_return_t a, CFStringRef b, IOSurfaceRef su
         instruction.layerInstructions = [NSArray arrayWithObject:transformer];
         
         videoComposition = [AVMutableVideoComposition videoComposition];
-        videoComposition.renderSize = CGSizeMake(960, 540);
+        videoComposition.renderSize = CGSizeMake(480, 270);
         videoComposition.frameDuration = CMTimeMake(1, 30);
         videoComposition.instructions = [NSArray arrayWithObject: instruction];
     }
@@ -706,7 +714,7 @@ void CARenderServerRenderDisplay(kern_return_t a, CFStringRef b, IOSurfaceRef su
 	AVAssetExportSession *exportSession = [[AVAssetExportSession alloc] initWithAsset:mixComposition presetName:AVAssetExportPresetHighestQuality];
 	[exportSession setOutputFileType:AVFileTypeMPEG4];
 	[exportSession setOutputURL:exportURL];
-	[exportSession setShouldOptimizeForNetworkUse:NO];
+	[exportSession setShouldOptimizeForNetworkUse:YES];
     [exportSession setAudioMix:exportAudioMix];
     
     if (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad || (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPhone && [UIScreen mainScreen].bounds.size.height == 480.0)) {
