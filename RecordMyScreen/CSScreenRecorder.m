@@ -478,14 +478,14 @@ void CARenderServerRenderDisplay(kern_return_t a, CFStringRef b, IOSurfaceRef su
             videoheight /= 2;
         }
     }
-    else {
-        if ([[UIScreen mainScreen] bounds].size.height == 480) {
-            NSLog(@"IPHONE 4S");
-
-            videowidth /= 2; //If it's set to half-size, divide both by 2.
-            videoheight /= 2;
-        }
-    }
+//    else {
+//        if ([[UIScreen mainScreen] bounds].size.height == 480) {
+//            NSLog(@"IPHONE 4S");
+//
+//            videowidth /= 2; //If it's set to half-size, divide both by 2.
+//            videoheight /= 2;
+//        }
+//    }
     NSMutableDictionary *outputSettings = [NSMutableDictionary dictionaryWithObjectsAndKeys:
                                            AVVideoCodecH264, AVVideoCodecKey,
                                            [NSNumber numberWithInt:videowidth], AVVideoWidthKey,
@@ -677,7 +677,7 @@ void CARenderServerRenderDisplay(kern_return_t a, CFStringRef b, IOSurfaceRef su
         
         AVMutableVideoCompositionLayerInstruction* transformer = [AVMutableVideoCompositionLayerInstruction videoCompositionLayerInstructionWithAssetTrack:compositionVideoTrack];
         
-        CGAffineTransform Concat2 = CGAffineTransformConcat(compositionVideoTrack.preferredTransform, CGAffineTransformMakeTranslation(480, -25));
+        CGAffineTransform Concat2 = CGAffineTransformConcat(compositionVideoTrack.preferredTransform, CGAffineTransformMakeTranslation(960, -50));
         [transformer setTransform:Concat2 atTime:kCMTimeZero];
         
         AVMutableVideoCompositionInstruction *instruction = [AVMutableVideoCompositionInstruction videoCompositionInstruction];
@@ -685,7 +685,7 @@ void CARenderServerRenderDisplay(kern_return_t a, CFStringRef b, IOSurfaceRef su
         instruction.layerInstructions = [NSArray arrayWithObject:transformer];
         
         videoComposition = [AVMutableVideoComposition videoComposition];
-        videoComposition.renderSize = CGSizeMake(480, 270);
+        videoComposition.renderSize = CGSizeMake(960, 540);
         videoComposition.frameDuration = CMTimeMake(1, 30);
         videoComposition.instructions = [NSArray arrayWithObject: instruction];
     }
