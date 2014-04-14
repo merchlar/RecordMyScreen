@@ -677,7 +677,7 @@ void CARenderServerRenderDisplay(kern_return_t a, CFStringRef b, IOSurfaceRef su
         
         AVMutableVideoCompositionLayerInstruction* transformer = [AVMutableVideoCompositionLayerInstruction videoCompositionLayerInstructionWithAssetTrack:compositionVideoTrack];
         
-        CGAffineTransform Concat2 = CGAffineTransformConcat(compositionVideoTrack.preferredTransform, CGAffineTransformMakeTranslation(960, -50));
+        CGAffineTransform Concat2 = CGAffineTransformConcat(compositionVideoTrack.preferredTransform, CGAffineTransformMakeTranslation(480, -25));
         [transformer setTransform:Concat2 atTime:kCMTimeZero];
         
         AVMutableVideoCompositionInstruction *instruction = [AVMutableVideoCompositionInstruction videoCompositionInstruction];
@@ -714,7 +714,7 @@ void CARenderServerRenderDisplay(kern_return_t a, CFStringRef b, IOSurfaceRef su
 	AVAssetExportSession *exportSession = [[AVAssetExportSession alloc] initWithAsset:mixComposition presetName:AVAssetExportPresetHighestQuality];
 	[exportSession setOutputFileType:AVFileTypeMPEG4];
 	[exportSession setOutputURL:exportURL];
-	[exportSession setShouldOptimizeForNetworkUse:YES];
+	[exportSession setShouldOptimizeForNetworkUse:NO];
     [exportSession setAudioMix:exportAudioMix];
     
     if (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad || (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPhone && [UIScreen mainScreen].bounds.size.height == 480.0)) {
