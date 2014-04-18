@@ -314,10 +314,16 @@
 
     //NSDate * start = [NSDate date];
     //UIGraphicsBeginImageContextWithOptions(self.bounds.size, NO, self.window.screen.scale);
-    UIGraphicsBeginImageContextWithOptions(self.recordingView.bounds.size, self.recordingView.opaque, 1.0f);
+    //TODO: ADOLFO CHANGED THE SCALE TO POSSIBLY RETINA
+    UIGraphicsBeginImageContextWithOptions(CGSizeMake(self.recordingView.bounds.size.height, self.recordingView.bounds.size.width), self.recordingView.opaque,[UIScreen mainScreen].scale);
+    CGContextRef ctx = UIGraphicsGetCurrentContext();
+    CGContextSaveGState(ctx);
+    CGContextConcatCTM(ctx,CGAffineTransformIdentity);
     [self.recordingView drawViewHierarchyInRect:self.recordingView.frame afterScreenUpdates:NO];
+    CGContextRestoreGState(ctx);
     UIImage * background = UIGraphicsGetImageFromCurrentImageContext();
     self.currentScreen = background;
+    //NSLog(@"currentScreen width: %f, height:%f, scale:%f",self.currentScreen.size.width,self.currentScreen.size.height,self.currentScreen.scale);
     UIGraphicsEndImageContext();
     
     dispatch_async(dispatch_get_main_queue(), ^{
