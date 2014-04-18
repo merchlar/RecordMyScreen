@@ -69,6 +69,15 @@
 
 @implementation CSScreenRecorder
 
+- (CGFloat)videoScale
+{
+    if (_videoScale<0.1f){
+        _videoScale = 1.0f;
+    }
+    
+    return _videoScale;
+}
+
 - (instancetype)init
 {
     if ((self = [super init])) {
@@ -77,7 +86,7 @@
         //video queue
         _videoQueue = dispatch_queue_create("video_queue", DISPATCH_QUEUE_SERIAL);
         //frame rate
-        _fps = 24;
+        _fps = 30;
         //encoding kbps
         _kbps = 5000;
     }
@@ -257,6 +266,8 @@
         //int lastFrame = -1;
         //long long lastFrame = -1;
         
+        dispatch_queue_t queue = dispatch_get_main_queue();
+        
         [self doRecordWithCompletionBlock:^(){
             
             NSLog(@"completiong block!!!");
@@ -276,7 +287,7 @@
                     [self _cancelEncoding];
                 }
             });
-        } interval:msBeforeNextCapture];
+        } interval:msBeforeNextCapture useQueue:queue];
         
         
         /*while(_isRecording)
@@ -329,7 +340,7 @@
     
 }
 
-- (void)doRecordWithCompletionBlock:(void(^)(void))block interval:(int)ms
+- (void)doRecordWithCompletionBlock:(void(^)(void))block interval:(int)ms useQueue:(dispatch_queue_t)queue
 {
     if (!_isRecording){
         block();
@@ -354,7 +365,10 @@
     lastFrame = frameNumber;*/
     
     // Capture next shot and repeat
-    [self _captureShot2:presentTime];
+    //dispatch_async(queue, ^{
+        [self _captureShot2:presentTime];
+    //});
+    
     //lastCaptureMS = currentTimeMS;
     
     
@@ -365,7 +379,7 @@
     
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)((MAX(ms-diff,0))/1000.0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
         
-        [self doRecordWithCompletionBlock:block interval:ms];
+        [self doRecordWithCompletionBlock:block interval:ms useQueue:queue];
         
     });
 }
@@ -377,47 +391,40 @@
     //NSDate * start = [NSDate date];
     //UIGraphicsBeginImageContextWithOptions(self.bounds.size, NO, self.window.screen.scale);
     //TODO: ADOLFO CHANGED THE SCALE TO POSSIBLY RETINA
-    
-    //New way: comment these 4 lines out
-    /*if (self.ctxRef != NULL){
-        CGContextRelease(self.ctxRef);
-    }
-    self.ctxRef = NULL;*/
+
     
     BOOL noImageContext = (self.ctxRef == NULL);
     
-    //NSLog(@"current view width: %f, height: %f",self.recordingView.bounds.size.width,self.recordingView.bounds.size.height);
+    CGSize viewSize = self.recordingView.bounds.size; //TODO: * video scale
+    
     if (noImageContext){
         NSLog(@"happening!");
-        UIGraphicsBeginImageContextWithOptions(CGSizeMake(self.recordingView.bounds.size.height, self.recordingView.bounds.size.width), self.recordingView.opaque,[UIScreen mainScreen].scale);
-        self.ctxRef = UIGraphicsGetCurrentContext();
-        CGContextRetain(self.ctxRef);
-//        UIGraphicsEndImageContext();
-        UIGraphicsPushContext(self.ctxRef);
         
-        CGContextConcatCTM(self.ctxRef,CGAffineTransformConcat(CGAffineTransformMakeTranslation(-self.recordingView.bounds.size.width,0),CGAffineTransformMakeRotation(-M_PI_2)));
-        
-        
+        if (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad) {
+            UIGraphicsBeginImageContextWithOptions(CGSizeMake(viewSize.width, viewSize.height), self.recordingView.opaque,[UIScreen mainScreen].scale);
+            self.ctxRef = UIGraphicsGetCurrentContext();
+            CGContextRetain(self.ctxRef);
+            UIGraphicsPushContext(self.ctxRef);
+        }
+        else {
+            UIGraphicsBeginImageContextWithOptions(CGSizeMake(viewSize.height, viewSize.width), self.recordingView.opaque,[UIScreen mainScreen].scale);
+            self.ctxRef = UIGraphicsGetCurrentContext();
+            CGContextRetain(self.ctxRef);
+            UIGraphicsPushContext(self.ctxRef);
+            
+            CGContextConcatCTM(self.ctxRef,CGAffineTransformConcat(CGAffineTransformMakeTranslation(-viewSize.width,0),CGAffineTransformMakeRotation(-M_PI_2)));
+        }
+
 
     }else{
         UIGraphicsPushContext(self.ctxRef);
     }
     
-    /*CGContextRef ctx = UIGraphicsGetCurrentContext();
-    
-    
-    if (ctx == self.ctxRef){
-        NSLog(@"OH NO");
-        return;
-    }*/
+
     
     [self.recordingView drawViewHierarchyInRect:CGRectMake(0,0,self.recordingView.frame.size.height, self.recordingView.frame.size.width) afterScreenUpdates:NO];
     
-//    CGContextRef ctx = UIGraphicsGetCurrentContext();
-    
-    //CGContextSaveGState(self.ctxRef);
-    
-    
+
     UIGraphicsPopContext();
     
     //CGContextRestoreGState(self.ctxRef);
@@ -428,7 +435,7 @@
     //NSLog(@"currentScreen width: %f, height:%f, scale:%f",self.currentScreen.size.width,self.currentScreen.size.height,self.currentScreen.scale);
     
     
-    //dispatch_async(dispatch_get_main_queue(), ^{
+    dispatch_async(dispatch_get_main_queue(), ^{
     
 
         if (_isRecording) {
@@ -486,7 +493,7 @@
         }
          
         
-    //});
+    });
  
  
 
@@ -661,6 +668,9 @@
 #pragma mark - Encoding
 - (void)_setupVideoContext
 {
+    //TODO: COMMENT OUT, DO NOT HARDCODE
+    //self.videoScale = 0.5f;
+    
     // Get the screen rect and scale
     CGRect screenRect = [UIScreen mainScreen].bounds;
     float scale = [UIScreen mainScreen].scale;
@@ -668,12 +678,12 @@
     // setup the width and height of the framebuffer for the device
     if ([[UIDevice currentDevice] userInterfaceIdiom] == UIUserInterfaceIdiomPhone) {
         // iPhone frame buffer is Portrait
-        _width = screenRect.size.width * scale;
-        _height = screenRect.size.height * scale;
+        _width = screenRect.size.width * scale; //TODO: * video scale
+        _height = screenRect.size.height * scale; //TODO: * video scale
     } else {
         // iPad frame buffer is Landscape
-        _width = screenRect.size.height * scale;
-        _height = screenRect.size.width * scale;
+        _width = screenRect.size.height* scale; //TODO: * video scale
+        _height = screenRect.size.width * scale; //TODO: * video scale
     }
     
     NSAssert((self.videoOutPath != nil) , @"A valid videoOutPath must be set before the recording starts!");

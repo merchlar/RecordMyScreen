@@ -28,6 +28,8 @@
 
 @property (nonatomic,assign) CGContextRef ctxRef;
 
+@property (nonatomic,assign) CGFloat videoScale;
+
 
 @property(nonatomic, assign) id<CSScreenRecorderDelegate> delegate;
 
