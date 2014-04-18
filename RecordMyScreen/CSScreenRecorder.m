@@ -317,17 +317,47 @@
     //TODO: ADOLFO CHANGED THE SCALE TO POSSIBLY RETINA
     
     NSLog(@"current view width: %f, height: %f",self.recordingView.bounds.size.width,self.recordingView.bounds.size.height);
-    UIGraphicsBeginImageContextWithOptions(CGSizeMake(self.recordingView.bounds.size.height, self.recordingView.bounds.size.width), self.recordingView.opaque,[UIScreen mainScreen].scale);
-    CGContextRef ctx = UIGraphicsGetCurrentContext();
-    CGContextSaveGState(ctx);
-    CGContextConcatCTM(ctx,CGAffineTransformConcat(CGAffineTransformMakeTranslation(-self.recordingView.bounds.size.width,0),CGAffineTransformMakeRotation(-M_PI_2)));
-    [self.recordingView drawViewHierarchyInRect:CGRectMake(0,0,self.recordingView.frame.size.height, self.recordingView.frame.size.width) afterScreenUpdates:NO];
     
-    CGContextRestoreGState(ctx);
-    UIImage * background = UIGraphicsGetImageFromCurrentImageContext();
-    self.currentScreen = background;
-    //NSLog(@"currentScreen width: %f, height:%f, scale:%f",self.currentScreen.size.width,self.currentScreen.size.height,self.currentScreen.scale);
-    UIGraphicsEndImageContext();
+    if (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad) {
+        if ([UIScreen mainScreen].scale == 2.0) {
+            
+            //TODO: FJ CHANGED THE SCALE TO NON RETINA FOR IPAD RETINA
+
+            
+            NSLog(@"IPAD RETINA");
+//            videowidth /= 2; //If it's set to half-size, divide both by 2.
+//            videoheight /= 2;
+            UIGraphicsBeginImageContextWithOptions(CGSizeMake(self.recordingView.bounds.size.width, self.recordingView.bounds.size.height), self.recordingView.opaque,[UIScreen mainScreen].scale);
+            [self.recordingView drawViewHierarchyInRect:CGRectMake(0,0,self.recordingView.frame.size.height, self.recordingView.frame.size.width) afterScreenUpdates:NO];
+            UIImage * background = UIGraphicsGetImageFromCurrentImageContext();
+            self.currentScreen = background;
+            UIGraphicsEndImageContext();
+
+        }
+        else {
+            NSLog(@"IPAD");
+            
+            UIGraphicsBeginImageContextWithOptions(CGSizeMake(self.recordingView.bounds.size.width, self.recordingView.bounds.size.height), self.recordingView.opaque,[UIScreen mainScreen].scale);
+            [self.recordingView drawViewHierarchyInRect:CGRectMake(0,0,self.recordingView.frame.size.height, self.recordingView.frame.size.width) afterScreenUpdates:NO];
+            UIImage * background = UIGraphicsGetImageFromCurrentImageContext();
+            self.currentScreen = background;
+            UIGraphicsEndImageContext();
+        }
+    }
+    else {
+        NSLog(@"IPHONE");
+
+        UIGraphicsBeginImageContextWithOptions(CGSizeMake(self.recordingView.bounds.size.height, self.recordingView.bounds.size.width), self.recordingView.opaque,[UIScreen mainScreen].scale);
+        CGContextRef ctx = UIGraphicsGetCurrentContext();
+        CGContextSaveGState(ctx);
+        CGContextConcatCTM(ctx,CGAffineTransformConcat(CGAffineTransformMakeTranslation(-self.recordingView.bounds.size.width,0),CGAffineTransformMakeRotation(-M_PI_2)));
+        [self.recordingView drawViewHierarchyInRect:CGRectMake(0,0,self.recordingView.frame.size.height, self.recordingView.frame.size.width) afterScreenUpdates:NO];
+        UIImage * background = UIGraphicsGetImageFromCurrentImageContext();
+        self.currentScreen = background;
+        UIGraphicsEndImageContext();
+
+    }
+
     
     dispatch_async(dispatch_get_main_queue(), ^{
 
