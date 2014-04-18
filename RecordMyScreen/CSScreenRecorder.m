@@ -47,6 +47,9 @@
     AVAssetWriter      *_videoWriter;
     AVAssetWriterInput *_videoWriterInput;
     AVAssetWriterInputPixelBufferAdaptor *_pixelBufferAdaptor;
+    
+    
+    long long _startTimeMS;
 }
 
 @property(nonatomic, copy) NSString *exportPath;
@@ -222,7 +225,7 @@
     _isCanceling = NO;
     _isCancelingFromNotif = NO;
     //capture loop (In another thread)
-    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+    dispatch_async(dispatch_get_main_queue() /*dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0)*/, ^{
         
         
         int targetFPS = _fps;
@@ -234,15 +237,15 @@
         
         
         
-        long long lastCaptureMS, currentTimeMS, startTimeMS;
+        //long long lastCaptureMS, currentTimeMS; //, startTimeMS;
         
-        lastCaptureMS = 0;
+        //lastCaptureMS = 0;
         
         //recording start time
         //gettimeofday(&startTime, NULL);
         //startTime.tv_usec /= 1000;
         
-        startTimeMS = (long long)([[NSDate date] timeIntervalSince1970] * 1000.0);
+        _startTimeMS = (long long)([[NSDate date] timeIntervalSince1970] * 1000.0);
         
         //startTimeMS = (long long)([[NSDate date] timeIntervalSince1970] * 1000.0);
         
@@ -251,8 +254,31 @@
         
         
         //int lastFrame = -1;
-        long long lastFrame = -1;
-        while(_isRecording)
+        //long long lastFrame = -1;
+        
+        [self doRecordWithCompletionBlock:^(){
+            
+            NSLog(@"completiong block!!!");
+            
+            if (self.ctxRef != NULL){
+                //TODO: RELEASE HERE!!!
+                //CGContextRelease(self.ctxRef);
+                self.ctxRef = NULL;
+            }
+            
+            // finish encoding, using the video_queue thread
+            dispatch_async(_videoQueue, ^{
+                if (!_isCanceling) {
+                    [self _finishEncoding];
+                }
+                else {
+                    [self _cancelEncoding];
+                }
+            });
+        } interval:msBeforeNextCapture];
+        
+        
+        /*while(_isRecording)
         {
             
             
@@ -290,25 +316,9 @@
             }
              
          
-        }
+        }*/
         
         
-        if (self.ctxRef != NULL){
-            //TODO: RELEASE HERE!!!
-            //CGContextRelease(self.ctxRef);
-            self.ctxRef = NULL;
-        }
-        
-        
-        // finish encoding, using the video_queue thread
-        dispatch_async(_videoQueue, ^{
-            if (!_isCanceling) {
-                [self _finishEncoding];
-            }
-            else {
-                [self _cancelEncoding];
-            }
-        });
          
      
         
@@ -318,8 +328,46 @@
     
 }
 
+- (void)doRecordWithCompletionBlock:(void(^)(void))block interval:(int)ms
+{
+    if (!_isRecording){
+        block();
+        return;
+    }
+    
+    //time since start
+    //long int msSinceStart = (currentTime.tv_usec + (1000 * currentTime.tv_sec) ) - (startTime.tv_usec + (1000 * startTime.tv_sec) );
+    long long currentTimeMS = (long long)([[NSDate date] timeIntervalSince1970] * 1000.0);
+    
+    long long msSinceStart = currentTimeMS - _startTimeMS;
+    
+    // Generate the frame number
+    //int frameNumber = msSinceStart / msBeforeNextCapture;
+    long long frameNumber = msSinceStart / ms;
+    CMTime presentTime;
+    presentTime = CMTimeMake(frameNumber, _fps);
+    
+    // Frame number cannot be last frames number :P
+    // TODO: Handle this just in case
+    /*NSParameterAssert(frameNumber != lastFrame);
+    lastFrame = frameNumber;*/
+    
+    // Capture next shot and repeat
+    [self _captureShot2:presentTime];
+    //lastCaptureMS = currentTimeMS;
+    
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(ms/1000.0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        
+        
+        [self doRecordWithCompletionBlock:block interval:ms];
+        
+    });
+}
+
 - (void)_captureShot2:(CMTime)frameTime {
 
+    
+    
     //NSDate * start = [NSDate date];
     //UIGraphicsBeginImageContextWithOptions(self.bounds.size, NO, self.window.screen.scale);
     //TODO: ADOLFO CHANGED THE SCALE TO POSSIBLY RETINA
@@ -338,7 +386,13 @@
         UIGraphicsBeginImageContextWithOptions(CGSizeMake(self.recordingView.bounds.size.height, self.recordingView.bounds.size.width), self.recordingView.opaque,[UIScreen mainScreen].scale);
         self.ctxRef = UIGraphicsGetCurrentContext();
         CGContextRetain(self.ctxRef);
-        //UIGraphicsEndImageContext();
+//        UIGraphicsEndImageContext();
+        UIGraphicsPushContext(self.ctxRef);
+        
+        CGContextConcatCTM(self.ctxRef,CGAffineTransformConcat(CGAffineTransformMakeTranslation(-self.recordingView.bounds.size.width,0),CGAffineTransformMakeRotation(-M_PI_2)));
+        
+        
+
     }else{
         UIGraphicsPushContext(self.ctxRef);
     }
@@ -351,15 +405,16 @@
         return;
     }*/
     
-    
-    
-    CGContextRef ctx = UIGraphicsGetCurrentContext();
-    
-    CGContextSaveGState(ctx);
-    CGContextConcatCTM(ctx,CGAffineTransformConcat(CGAffineTransformMakeTranslation(-self.recordingView.bounds.size.width,0),CGAffineTransformMakeRotation(-M_PI_2)));
     [self.recordingView drawViewHierarchyInRect:CGRectMake(0,0,self.recordingView.frame.size.height, self.recordingView.frame.size.width) afterScreenUpdates:NO];
     
-    CGContextRestoreGState(ctx);
+//    CGContextRef ctx = UIGraphicsGetCurrentContext();
+    
+    //CGContextSaveGState(self.ctxRef);
+    
+    
+    UIGraphicsPopContext();
+    
+    //CGContextRestoreGState(self.ctxRef);
     UIImage * background = UIGraphicsGetImageFromCurrentImageContext();
     
     
@@ -367,16 +422,9 @@
     //NSLog(@"currentScreen width: %f, height:%f, scale:%f",self.currentScreen.size.width,self.currentScreen.size.height,self.currentScreen.scale);
     
     
-    if (noImageContext){
-        UIGraphicsEndImageContext();
-    }else{
-        UIGraphicsPopContext();
-    }
-    
-    
-    
-    
     dispatch_async(dispatch_get_main_queue(), ^{
+    
+    
         
         
 
@@ -434,6 +482,8 @@
                 
             }
         }
+         
+        
     });
  
  
