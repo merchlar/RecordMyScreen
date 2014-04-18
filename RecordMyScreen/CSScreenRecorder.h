@@ -17,11 +17,15 @@
 // All these properties must be set before -startRecordingScreen is called, or defaults will be used.
 
 // the path where the video/audio is saved whilst being recorded.
+@property(nonatomic, retain) UIView *recordingView;
 @property(nonatomic, copy) NSString *videoOutPath;
 @property(nonatomic, copy) NSString *audioOutPath;
 @property(nonatomic, copy, readonly) NSString *exportPath;
 @property(nonatomic, copy) NSNumber *audioSampleRate;
 @property(nonatomic, copy) NSNumber *numberOfAudioChannels;
+
+@property(retain) UIImage * currentScreen;
+
 
 @property(nonatomic, assign) id<CSScreenRecorderDelegate> delegate;
 
