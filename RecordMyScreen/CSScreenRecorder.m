@@ -428,12 +428,8 @@
     //NSLog(@"currentScreen width: %f, height:%f, scale:%f",self.currentScreen.size.width,self.currentScreen.size.height,self.currentScreen.scale);
     
     
-    dispatch_async(dispatch_get_main_queue(), ^{
+    //dispatch_async(dispatch_get_main_queue(), ^{
     
-    
-        
-        
-
 
         if (_isRecording) {
             //float millisElapsed = [[NSDate date] timeIntervalSinceDate:_recordStartDate] * 1000.0;
@@ -490,7 +486,7 @@
         }
          
         
-    });
+    //});
  
  
 
