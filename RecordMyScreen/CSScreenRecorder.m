@@ -50,6 +50,7 @@
     
     
     long long _startTimeMS;
+    //long long _lastTimeMS;
 }
 
 @property(nonatomic, copy) NSString *exportPath;
@@ -251,7 +252,7 @@
         
         //startTimeMS = (long long)([[NSDate date] timeIntervalSince1970] * 1000.0);
         
-        
+        //_lastTimeMS = 0;
         
         //int lastFrame = -1;
         //long long lastFrame = -1;
@@ -356,8 +357,13 @@
     [self _captureShot2:presentTime];
     //lastCaptureMS = currentTimeMS;
     
-    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(ms/1000.0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-        
+    
+    
+    long long diff = (long long)([[NSDate date] timeIntervalSince1970] * 1000.0) - currentTimeMS;
+    
+    //NSLog(@"ms: %d, diff: %d",ms,diff);
+    
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)((MAX(ms-diff,0))/1000.0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
         
         [self doRecordWithCompletionBlock:block interval:ms];
         
