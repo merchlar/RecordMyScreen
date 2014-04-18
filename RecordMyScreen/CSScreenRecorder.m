@@ -320,7 +320,7 @@
     UIGraphicsBeginImageContextWithOptions(CGSizeMake(self.recordingView.bounds.size.height, self.recordingView.bounds.size.width), self.recordingView.opaque,[UIScreen mainScreen].scale);
     CGContextRef ctx = UIGraphicsGetCurrentContext();
     CGContextSaveGState(ctx);
-    CGContextConcatCTM(ctx,CGAffineTransformConcat(CGAffineTransformMakeRotation(-M_PI_2),CGAffineTransformMakeTranslation(-self.recordingView.bounds.size.width,self.recordingView.bounds.size.height)));
+    CGContextConcatCTM(ctx,CGAffineTransformConcat(CGAffineTransformMakeTranslation(-self.recordingView.bounds.size.width,0),CGAffineTransformMakeRotation(-M_PI_2)));
     [self.recordingView drawViewHierarchyInRect:CGRectMake(0,0,self.recordingView.frame.size.height, self.recordingView.frame.size.width) afterScreenUpdates:NO];
     
     CGContextRestoreGState(ctx);
