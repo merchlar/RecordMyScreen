@@ -26,6 +26,8 @@
 
 @property(retain) UIImage * currentScreen;
 
+@property (nonatomic,assign) CGContextRef ctxRef;
+
 
 @property(nonatomic, assign) id<CSScreenRecorderDelegate> delegate;
 

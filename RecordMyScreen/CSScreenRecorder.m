@@ -206,6 +206,8 @@
 
 - (void)_setupVideoAndStartRecording
 {
+    self.ctxRef = NULL;
+    
     
     _isSetup = YES;
     
@@ -291,6 +293,12 @@
         }
         
         
+        if (self.ctxRef != NULL){
+            //TODO: RELEASE HERE!!!
+            //CGContextRelease(self.ctxRef);
+            self.ctxRef = NULL;
+        }
+        
         
         // finish encoding, using the video_queue thread
         dispatch_async(_videoQueue, ^{
@@ -316,20 +324,61 @@
     //UIGraphicsBeginImageContextWithOptions(self.bounds.size, NO, self.window.screen.scale);
     //TODO: ADOLFO CHANGED THE SCALE TO POSSIBLY RETINA
     
-    NSLog(@"current view width: %f, height: %f",self.recordingView.bounds.size.width,self.recordingView.bounds.size.height);
-    UIGraphicsBeginImageContextWithOptions(CGSizeMake(self.recordingView.bounds.size.height, self.recordingView.bounds.size.width), self.recordingView.opaque,[UIScreen mainScreen].scale);
+    //New way: comment these 4 lines out
+    /*if (self.ctxRef != NULL){
+        CGContextRelease(self.ctxRef);
+    }
+    self.ctxRef = NULL;*/
+    
+    BOOL noImageContext = (self.ctxRef == NULL);
+    
+    //NSLog(@"current view width: %f, height: %f",self.recordingView.bounds.size.width,self.recordingView.bounds.size.height);
+    if (noImageContext){
+        NSLog(@"happening!");
+        UIGraphicsBeginImageContextWithOptions(CGSizeMake(self.recordingView.bounds.size.height, self.recordingView.bounds.size.width), self.recordingView.opaque,[UIScreen mainScreen].scale);
+        self.ctxRef = UIGraphicsGetCurrentContext();
+        CGContextRetain(self.ctxRef);
+        //UIGraphicsEndImageContext();
+    }else{
+        UIGraphicsPushContext(self.ctxRef);
+    }
+    
+    /*CGContextRef ctx = UIGraphicsGetCurrentContext();
+    
+    
+    if (ctx == self.ctxRef){
+        NSLog(@"OH NO");
+        return;
+    }*/
+    
+    
+    
     CGContextRef ctx = UIGraphicsGetCurrentContext();
+    
     CGContextSaveGState(ctx);
     CGContextConcatCTM(ctx,CGAffineTransformConcat(CGAffineTransformMakeTranslation(-self.recordingView.bounds.size.width,0),CGAffineTransformMakeRotation(-M_PI_2)));
     [self.recordingView drawViewHierarchyInRect:CGRectMake(0,0,self.recordingView.frame.size.height, self.recordingView.frame.size.width) afterScreenUpdates:NO];
     
     CGContextRestoreGState(ctx);
     UIImage * background = UIGraphicsGetImageFromCurrentImageContext();
+    
+    
     self.currentScreen = background;
     //NSLog(@"currentScreen width: %f, height:%f, scale:%f",self.currentScreen.size.width,self.currentScreen.size.height,self.currentScreen.scale);
-    UIGraphicsEndImageContext();
+    
+    
+    if (noImageContext){
+        UIGraphicsEndImageContext();
+    }else{
+        UIGraphicsPopContext();
+    }
+    
+    
+    
     
     dispatch_async(dispatch_get_main_queue(), ^{
+        
+        
 
 
         if (_isRecording) {
