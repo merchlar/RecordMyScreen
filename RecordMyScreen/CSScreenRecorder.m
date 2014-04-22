@@ -17,6 +17,7 @@
 //#include <IOSurfaceBase.h>
 #include <sys/time.h>
 
+
 //void CARenderServerRenderDisplay(kern_return_t a, CFStringRef b, IOSurfaceRef surface, int x, int y);
 
 @interface CSScreenRecorder ()
@@ -357,7 +358,7 @@
     //int frameNumber = msSinceStart / msBeforeNextCapture;
     long long frameNumber = msSinceStart / ms;
     CMTime presentTime;
-    presentTime = CMTimeMake(frameNumber, _fps);
+    presentTime = CMTimeMake(frameNumber/self.slowDownRate, _fps);
     
     // Frame number cannot be last frames number :P
     // TODO: Handle this just in case
@@ -426,6 +427,8 @@
     
 
     UIGraphicsPopContext();
+    
+    //return;
     
     //CGContextRestoreGState(self.ctxRef);
     UIImage * background = UIGraphicsGetImageFromCurrentImageContext();

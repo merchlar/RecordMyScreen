@@ -33,6 +33,8 @@
 
 @property(nonatomic, assign) id<CSScreenRecorderDelegate> delegate;
 
+@property (nonatomic,assign) int slowDownRate;
+
 - (void)startRecordingScreen;
 - (void)stopRecordingScreen;
 - (void)cancelRecordingScreen;
